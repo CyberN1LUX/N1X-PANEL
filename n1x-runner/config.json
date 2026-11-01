@@ -1,0 +1,14 @@
+{
+  "host": "0.0.0.0",
+  "port": 8080,
+  "token": "n1x-secure-runner-token",
+  "panel_url": "http://127.0.0.1:8080",
+  "applications_root": "/var/lib/n1x/applications",
+  "port_range_start": 5000,
+  "port_range_end": 9000,
+  "nginx_enabled": true,
+  "nginx_conf_dir": "/etc/nginx/conf.d",
+  "user_prefix": "n1x-app",
+  "log_dir": "/var/log/n1x"
+}
+

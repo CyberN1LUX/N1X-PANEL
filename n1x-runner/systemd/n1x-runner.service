@@ -1,0 +1,17 @@
+[Unit]
+Description=N1X PANEL Native Application Runner
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/lib/n1x/runner
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5s
+Environment=NODE_ENV=production
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+

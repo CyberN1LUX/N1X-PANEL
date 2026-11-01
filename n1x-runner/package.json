@@ -1,0 +1,16 @@
+{
+  "name": "n1x-runner",
+  "version": "1.0.0",
+  "description": "N1X PANEL Native Docker-Free Application Runner",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

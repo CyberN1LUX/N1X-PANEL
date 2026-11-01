@@ -74,6 +74,35 @@ function parseRawBody(req) {
     });
 }
 
+function notifyPanelInstallComplete(uuid) {
+    return new Promise((resolve) => {
+        const panelUrl = config.panel_url || 'http://127.0.0.1:5000';
+        try {
+            const parsedUrl = new URL(panelUrl);
+            const postData = JSON.stringify({ successful: true });
+            const req = http.request({
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port || 80,
+                path: `/api/remote/servers/${uuid}/install`,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(postData),
+                    'Authorization': `Bearer ${config.token}`,
+                    'Accept': 'application/json',
+                },
+            }, (res) => {
+                resolve(res.statusCode >= 200 && res.statusCode < 300);
+            });
+            req.on('error', () => resolve(false));
+            req.write(postData);
+            req.end();
+        } catch (e) {
+            resolve(false);
+        }
+    });
+}
+
 // HTTP Server
 const server = http.createServer(async (req, res) => {
     const url = parseUrl(req.url, true);
@@ -168,12 +197,18 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
             if (!uuid) return sendJson(res, 400, { error: 'Server uuid required' });
 
             await fileManager.ensureAppDirectory(uuid);
-            processManager.registerApp(uuid, {
+            const app = processManager.registerApp(uuid, {
                 name: body.name || uuid,
                 runtime: body.runtime || 'node',
                 port: body.port || 5000,
                 env: body.env || {},
             });
+
+            // Ensure starter template files so process never crashes on missing index.js
+            processManager.ensureStarterFiles(app);
+
+            // Notify panel that installation is completed
+            notifyPanelInstallComplete(uuid).catch(e => console.warn('Could not notify panel install', e.message));
 
             if (body.start_on_completion) {
                 processManager.start(uuid).catch(e => console.error(e));

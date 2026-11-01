@@ -63,9 +63,9 @@
                         </div>
                         <div class="col-sm-6">
                             <div class="form-group">
-                                <label for="pDockerImage" class="control-label">Docker Images</label>
-                                <textarea id="pDockerImages" name="docker_images" rows="4" placeholder="ghcr.io/pterodactyl/yolks" class="form-control">{{ old('docker_images') }}</textarea>
-                                <p class="text-muted small">The docker images available to servers using this egg. Enter one per line. Users will be able to select from this list of images if more than one value is provided.</p>
+                                <label for="pDockerImage" class="control-label">Runtime Environments (Docker-Free)</label>
+                                <textarea id="pDockerImages" name="docker_images" rows="4" placeholder="Native Node.js|node:latest" class="form-control">{{ old('docker_images') }}</textarea>
+                                <p class="text-muted small">The native runtime environments available to applications using this egg. Enter one per line.</p>
                             </div>
                             <div class="form-group">
                                 <label for="pStartup" class="control-label">Startup Command</label>

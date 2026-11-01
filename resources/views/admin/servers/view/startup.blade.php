@@ -84,14 +84,14 @@
             </div>
             <div class="box">
                 <div class="box-header with-border">
-                    <h3 class="box-title">Docker Image Configuration</h3>
+                    <h3 class="box-title">Runtime Environment Configuration (Docker-Free)</h3>
                 </div>
                 <div class="box-body">
                     <div class="form-group">
-                        <label for="pDockerImage">Image</label>
+                        <label for="pDockerImage">Native Runtime Environment</label>
                         <select id="pDockerImage" name="docker_image" class="form-control"></select>
-                        <input id="pDockerImageCustom" name="custom_docker_image" value="{{ old('custom_docker_image') }}" class="form-control" placeholder="Or enter a custom image..." style="margin-top:1rem"/>
-                        <p class="small text-muted no-margin">This is the Docker image that will be used to run this server. Select an image from the dropdown or enter a custom image in the text field above.</p>
+                        <input id="pDockerImageCustom" name="custom_docker_image" value="{{ old('custom_docker_image') }}" class="form-control" placeholder="Or enter a custom runtime environment..." style="margin-top:1rem"/>
+                        <p class="small text-muted no-margin">This is the native runtime environment used to run this application (Docker-Free).</p>
                     </div>
                 </div>
             </div>

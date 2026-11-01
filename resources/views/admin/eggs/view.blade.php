@@ -77,13 +77,13 @@
                                 <p class="text-muted small">The author of this version of the Egg. Uploading a new Egg configuration from a different author will change this.</p>
                             </div>
                             <div class="form-group">
-                                <label for="pDockerImage" class="control-label">Docker Images <span class="field-required"></span></label>
+                                <label for="pDockerImage" class="control-label">Runtime Environments (Docker-Free) <span class="field-required"></span></label>
                                 <textarea id="pDockerImages" name="docker_images" class="form-control" rows="4">{{ implode(PHP_EOL, $images) }}</textarea>
                                 <p class="text-muted small">
-                                    The docker images available to servers using this egg. Enter one per line. Users
-                                    will be able to select from this list of images if more than one value is provided.
+                                    The native runtime environments available to applications using this egg. Enter one per line. Users
+                                    will be able to select from this list if more than one value is provided.
                                     Optionally, a display name may be provided by prefixing the image with the name
-                                    followed by a pipe character, and then the image URL. Example: <code>Display Name|ghcr.io/my/egg</code>
+                                    followed by a pipe character, and then the image URL. Example: <code>Display Name|native:runtime</code>
                                 </p>
                             </div>
                             <div class="form-group">

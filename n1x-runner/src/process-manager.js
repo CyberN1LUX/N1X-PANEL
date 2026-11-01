@@ -135,7 +135,200 @@ class ProcessManager extends EventEmitter {
         }
     }
 
+    ensureStarterFiles(app) {
+        const cwd = app.appDir;
+        if (!fs.existsSync(cwd)) {
+            fs.mkdirSync(cwd, { recursive: true });
+        }
+
+        const runtime = (app.runtime || 'node').toLowerCase();
+
+        // 1. NODE.JS
+        if (runtime.includes('node') || runtime.includes('js')) {
+            const hasJs = fs.existsSync(path.join(cwd, 'index.js')) ||
+                          fs.existsSync(path.join(cwd, 'app.js')) ||
+                          fs.existsSync(path.join(cwd, 'server.js'));
+            if (!hasJs) {
+                const starterJs = `// Auto-generated N1X PANEL Node.js Starter
+const http = require('http');
+const port = process.env.PORT || ${app.port || 5000};
+
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(\`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>N1X PANEL - Node.js App</title>
+<style>
+body { background: #0B0F0E; color: #F0FDF4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+.card { background: #151E1A; border: 1px solid #26352E; border-top: 4px solid #22C55E; padding: 36px 44px; border-radius: 12px; box-shadow: 0 12px 35px rgba(0,0,0,0.6); max-width: 500px; text-align: center; }
+h1 { color: #22C55E; margin: 0 0 8px 0; font-size: 26px; }
+p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
+.badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(34, 197, 94, 0.15); color: #22C55E; border: 1px solid #22C55E; padding: 4px 14px; border-radius: 20px; font-weight: 600; font-size: 13px; margin: 12px 0; }
+.info { background: #101715; border: 1px solid #26352E; border-radius: 8px; padding: 12px; margin-top: 14px; text-align: left; font-size: 13px; font-family: Consolas, monospace; color: #BBF7D0; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="card">
+<h1>N1X PANEL</h1>
+<div class="badge">&bull; Node.js Application Online</div>
+<p>Your Node.js web application is running natively without Docker.</p>
+<div class="info">
+&bull; Port: \${port}<br>
+&bull; Runtime: Node.js \${process.version}<br>
+&bull; Status: Active (PID: \${process.pid})
+</div>
+</div>
+</body>
+</html>\`);
+});
+
+server.listen(port, '0.0.0.0', () => {
+    console.log(\`[N1X-PANEL] Node.js server running on http://0.0.0.0:\${port}\`);
+});
+`;
+                fs.writeFileSync(path.join(cwd, 'index.js'), starterJs, 'utf8');
+                if (!fs.existsSync(path.join(cwd, 'package.json'))) {
+                    fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({
+                        name: (app.name || 'n1x-node-app').toLowerCase().replace(/[^a-z0-9_-]/g, '-'),
+                        version: '1.0.0',
+                        main: 'index.js',
+                        scripts: { start: 'node index.js' }
+                    }, null, 2), 'utf8');
+                }
+                this.appendLog(app.uuid, `\x1b[32m[N1X-RUNNER] Created default Node.js starter files (index.js, package.json)\x1b[0m`);
+            }
+        }
+
+        // 2. PYTHON
+        if (runtime.includes('python') || runtime.includes('py')) {
+            const hasPy = fs.existsSync(path.join(cwd, 'app.py')) ||
+                          fs.existsSync(path.join(cwd, 'main.py'));
+            if (!hasPy) {
+                const starterPy = `# Auto-generated N1X PANEL Python Starter
+import os
+import sys
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+port = int(os.environ.get('PORT', ${app.port || 5000}))
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.end_headers()
+        html = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>N1X PANEL - Python App</title>
+<style>
+body {{ background: #0B0F0E; color: #F0FDF4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }}
+.card {{ background: #151E1A; border: 1px solid #26352E; border-top: 4px solid #22C55E; padding: 36px 44px; border-radius: 12px; box-shadow: 0 12px 35px rgba(0,0,0,0.6); max-width: 500px; text-align: center; }}
+h1 {{ color: #22C55E; margin: 0 0 8px 0; font-size: 26px; }}
+p {{ color: #94A3A0; font-size: 14px; margin: 8px 0; }}
+.badge {{ display: inline-flex; align-items: center; gap: 6px; background: rgba(34, 197, 94, 0.15); color: #22C55E; border: 1px solid #22C55E; padding: 4px 14px; border-radius: 20px; font-weight: 600; font-size: 13px; margin: 12px 0; }}
+.info {{ background: #101715; border: 1px solid #26352E; border-radius: 8px; padding: 12px; margin-top: 14px; text-align: left; font-size: 13px; font-family: Consolas, monospace; color: #BBF7D0; line-height: 1.6; }}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>N1X PANEL</h1>
+<div class="badge">&bull; Python Application Online</div>
+<p>Your Python web application is running natively without Docker.</p>
+<div class="info">
+&bull; Port: {port}<br>
+&bull; Python: {sys.version.split()[0]}<br>
+&bull; Status: Active (PID: {os.getpid()})
+</div>
+</div>
+</body>
+</html>"""
+        self.wfile.write(html.encode('utf-8'))
+
+print(f"[N1X-PANEL] Python server listening on http://0.0.0.0:{port}")
+httpd = HTTPServer(('0.0.0.0', port), Handler)
+httpd.serve_forever()
+`;
+                fs.writeFileSync(path.join(cwd, 'app.py'), starterPy, 'utf8');
+                this.appendLog(app.uuid, `\x1b[32m[N1X-RUNNER] Created default Python starter file (app.py)\x1b[0m`);
+            }
+        }
+
+        // 3. PHP
+        if (runtime.includes('php')) {
+            const hasPhp = fs.existsSync(path.join(cwd, 'index.php')) ||
+                           fs.existsSync(path.join(cwd, 'public', 'index.php'));
+            if (!hasPhp) {
+                const starterPhp = `<?php
+$port = getenv('PORT') ?: ${app.port || 5000};
+?>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>N1X PANEL - PHP App</title>
+<style>
+body { background: #0B0F0E; color: #F0FDF4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+.card { background: #151E1A; border: 1px solid #26352E; border-top: 4px solid #22C55E; padding: 36px 44px; border-radius: 12px; box-shadow: 0 12px 35px rgba(0,0,0,0.6); max-width: 500px; text-align: center; }
+h1 { color: #22C55E; margin: 0 0 8px 0; font-size: 26px; }
+p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
+.badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(34, 197, 94, 0.15); color: #22C55E; border: 1px solid #22C55E; padding: 4px 14px; border-radius: 20px; font-weight: 600; font-size: 13px; margin: 12px 0; }
+.info { background: #101715; border: 1px solid #26352E; border-radius: 8px; padding: 12px; margin-top: 14px; text-align: left; font-size: 13px; font-family: Consolas, monospace; color: #BBF7D0; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="card">
+<h1>N1X PANEL</h1>
+<div class="badge">&bull; PHP Application Online</div>
+<p>Your PHP web application is running natively without Docker.</p>
+<div class="info">
+&bull; Port: <?= htmlspecialchars($port) ?><br>
+&bull; PHP Version: <?= phpversion() ?><br>
+&bull; Status: Active (PID: <?= getmypid() ?>)
+</div>
+</div>
+</body>
+</html>`;
+                fs.writeFileSync(path.join(cwd, 'index.php'), starterPhp, 'utf8');
+                this.appendLog(app.uuid, `\x1b[32m[N1X-RUNNER] Created default PHP starter file (index.php)\x1b[0m`);
+            }
+        }
+
+        // 4. STATIC
+        if (runtime.includes('static') || runtime.includes('html')) {
+            if (!fs.existsSync(path.join(cwd, 'index.html'))) {
+                const starterHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>N1X PANEL - Static App</title>
+<style>
+body { background: #0B0F0E; color: #F0FDF4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+.card { background: #151E1A; border: 1px solid #26352E; border-top: 4px solid #22C55E; padding: 36px 44px; border-radius: 12px; box-shadow: 0 12px 35px rgba(0,0,0,0.6); max-width: 500px; text-align: center; }
+h1 { color: #22C55E; margin: 0 0 8px 0; font-size: 26px; }
+p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
+.badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(34, 197, 94, 0.15); color: #22C55E; border: 1px solid #22C55E; padding: 4px 14px; border-radius: 20px; font-weight: 600; font-size: 13px; margin: 12px 0; }
+.info { background: #101715; border: 1px solid #26352E; border-radius: 8px; padding: 12px; margin-top: 14px; text-align: left; font-size: 13px; font-family: Consolas, monospace; color: #BBF7D0; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="card">
+<h1>N1X PANEL</h1>
+<div class="badge">&bull; Static Website Online</div>
+<p>Your static website is ready. Upload HTML, CSS, and JS files via File Manager.</p>
+</div>
+</body>
+</html>`;
+                fs.writeFileSync(path.join(cwd, 'index.html'), starterHtml, 'utf8');
+                this.appendLog(app.uuid, `\x1b[32m[N1X-RUNNER] Created default static HTML file (index.html)\x1b[0m`);
+            }
+        }
+    }
+
     async resolveExecutionCommand(app) {
+        this.ensureStarterFiles(app);
         const cwd = app.appDir;
         const runtime = (app.runtime || 'node').toLowerCase();
 

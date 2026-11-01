@@ -173,7 +173,7 @@
                             <span class="input-group-addon">MiB</span>
                         </div>
 
-                        <p class="text-muted small">The maximum amount of memory allowed for this container. Setting this to <code>0</code> will allow unlimited memory in a container.</p>
+                        <p class="text-muted small">The maximum amount of memory allowed for this application process. Setting this to <code>0</code> will allow unlimited memory.</p>
                     </div>
 
                     <div class="form-group col-xs-6">
@@ -207,15 +207,15 @@
                             <input type="text" id="pIO" name="io" class="form-control" value="{{ old('io', 500) }}" />
                         </div>
 
-                        <p class="text-muted small"><strong>Advanced</strong>: The IO performance of this server relative to other <em>running</em> containers on the system. Value should be between <code>10</code> and <code>1000</code>. Please see <a href="https://docs.docker.com/engine/reference/run/#block-io-bandwidth-blkio-constraint" target="_blank">this documentation</a> for more information about it.</p>
+                        <p class="text-muted small"><strong>Advanced</strong>: Relative disk IO priority for this application process. Value should be between <code>10</code> and <code>1000</code>.</p>
                     </div>
                     <div class="form-group col-xs-12">
                         <div class="checkbox checkbox-primary no-margin-bottom">
                             <input type="checkbox" id="pOomDisabled" name="oom_disabled" value="0" {{ \Pterodactyl\Helpers\Utilities::checked('oom_disabled', 0) }} />
-                            <label for="pOomDisabled" class="strong">Enable OOM Killer</label>
+                            <label for="pOomDisabled" class="strong">Enable Memory Process Guard</label>
                         </div>
 
-                        <p class="small text-muted no-margin">Terminates the server if it breaches the memory limits. Enabling OOM killer may cause server processes to exit unexpectedly.</p>
+                        <p class="small text-muted no-margin">Safely terminates or restarts the application process if it breaches memory limits.</p>
                     </div>
                 </div>
             </div>
@@ -236,7 +236,7 @@
                         <select id="pNestId" name="nest_id" class="form-control">
                             @foreach($nests as $nest)
                                 <option value="{{ $nest->id }}"
-                                    @if($nest->id === old('nest_id'))
+                                    @if($nest->id === old('nest_id', $nests->firstWhere('name', 'Web Applications')->id ?? null))
                                         selected="selected"
                                     @endif
                                 >{{ $nest->name }}</option>
@@ -266,15 +266,15 @@
         <div class="col-md-6">
             <div class="box">
                 <div class="box-header with-border">
-                    <h3 class="box-title">Docker Configuration</h3>
+                    <h3 class="box-title">Runtime Environment Configuration (Docker-Free)</h3>
                 </div>
 
                 <div class="box-body row">
                     <div class="form-group col-xs-12">
-                        <label for="pDefaultContainer">Docker Image</label>
+                        <label for="pDefaultContainer">Native Runtime Environment</label>
                         <select id="pDefaultContainer" name="image" class="form-control"></select>
-                        <input id="pDefaultContainerCustom" name="custom_image" value="{{ old('custom_image') }}" class="form-control" placeholder="Or enter a custom image..." style="margin-top:1rem"/>
-                        <p class="small text-muted no-margin">This is the default Docker image that will be used to run this server. Select an image from the dropdown above, or enter a custom image in the text field above.</p>
+                        <input id="pDefaultContainerCustom" name="custom_image" value="{{ old('custom_image') }}" class="form-control" placeholder="Or specify custom runtime environment..." style="margin-top:1rem"/>
+                        <p class="small text-muted no-margin">Native execution environment managed directly by N1X Native Process Manager (no Docker required). Select an environment from the dropdown above, or enter a custom runtime.</p>
                     </div>
                 </div>
             </div>
@@ -388,6 +388,8 @@
                     $('#pEggId').val('{{ old('egg_id') }}').change();
                 @endif
                 // END Persist 'Egg' select2
+            @else
+                $('#pNestId').change();
             @endif
             // END Persist 'Nest' select2
         });

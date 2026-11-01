@@ -38,7 +38,7 @@
                                 @endif
                             </tr>
                             <tr>
-                                <td>UUID / Docker Container ID</td>
+                                <td>Application UUID / Process ID</td>
                                 <td><code>{{ $server->uuid }}</code></td>
                             </tr>
                             <tr>

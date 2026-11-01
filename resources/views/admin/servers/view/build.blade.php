@@ -45,7 +45,7 @@
                             <input type="text" name="memory" data-multiplicator="true" class="form-control" value="{{ old('memory', $server->memory) }}"/>
                             <span class="input-group-addon">MiB</span>
                         </div>
-                        <p class="text-muted small">The maximum amount of memory allowed for this container. Setting this to <code>0</code> will allow unlimited memory in a container.</p>
+                        <p class="text-muted small">The maximum amount of memory allowed for this application process. Setting this to <code>0</code> will allow unlimited memory.</p>
                     </div>
                     <div class="form-group">
                         <label for="swap" class="control-label">Allocated Swap</label>
@@ -68,7 +68,7 @@
                         <div>
                             <input type="text" name="io" class="form-control" value="{{ old('io', $server->io) }}"/>
                         </div>
-                        <p class="text-muted small"><strong>Advanced</strong>: The IO performance of this server relative to other <em>running</em> containers on the system. Value should be between <code>10</code> and <code>1000</code>.</code></p>
+                        <p class="text-muted small"><strong>Advanced</strong>: Relative disk IO priority for this application process. Value should be between <code>10</code> and <code>1000</code>.</p>
                     </div>
                     <div class="form-group">
                         <label for="cpu" class="control-label">OOM Killer</label>

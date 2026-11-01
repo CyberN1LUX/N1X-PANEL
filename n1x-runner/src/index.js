@@ -2,6 +2,7 @@ const http = require('http');
 const { parse: parseUrl } = require('url');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { WebSocketServer } = require('ws');
 
 const FileManager = require('./file-manager');
@@ -132,6 +133,32 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
                 docker_free: true,
                 runtimes: ['node', 'python', 'php', 'static'],
             });
+        }
+
+        // Pterodactyl Wings / Node Compatibility: GET /api/system
+        if (pathname === '/api/system' && method === 'GET') {
+            return sendJson(res, 200, {
+                architecture: os.arch(),
+                cpu_count: os.cpus().length,
+                kernel_version: os.release(),
+                os: os.platform(),
+                version: '1.0.0',
+            });
+        }
+
+        // Pterodactyl Wings / Node Compatibility: POST /api/update
+        if (pathname === '/api/update' && method === 'POST') {
+            const body = await parseJsonBody(req);
+            if (body && body.token) {
+                config.token = body.token;
+                config.uuid = body.uuid || config.uuid;
+                try {
+                    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+                } catch (e) {
+                    console.warn('Could not persist updated config to config.json', e.message);
+                }
+            }
+            return sendJson(res, 200, { success: true });
         }
 
         // 1. POST /api/servers (Create/Register Server)

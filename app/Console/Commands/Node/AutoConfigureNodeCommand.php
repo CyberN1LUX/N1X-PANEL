@@ -102,6 +102,7 @@ class AutoConfigureNodeCommand extends Command
         if (file_exists($runnerConfigPath)) {
             $runnerConfig = json_decode(file_get_contents($runnerConfigPath), true) ?: [];
             $runnerConfig['token'] = $node->getDecryptedKey();
+            $runnerConfig['token_id'] = $node->daemon_token_id;
             $runnerConfig['uuid'] = $node->uuid;
             $runnerConfig['node_id'] = $node->id;
             $runnerConfig['panel_url'] = config('app.url', 'http://127.0.0.1:5000');

@@ -74,6 +74,10 @@ function parseRawBody(req) {
     });
 }
 
+function getBearerToken() {
+    return config.token_id ? `${config.token_id}.${config.token}` : config.token;
+}
+
 function notifyPanelInstallComplete(uuid) {
     return new Promise((resolve) => {
         const panelUrl = config.panel_url || 'http://127.0.0.1:5000';
@@ -88,7 +92,7 @@ function notifyPanelInstallComplete(uuid) {
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(postData),
-                    'Authorization': `Bearer ${config.token}`,
+                    'Authorization': `Bearer ${getBearerToken()}`,
                     'Accept': 'application/json',
                 },
             }, (res) => {
@@ -99,6 +103,40 @@ function notifyPanelInstallComplete(uuid) {
             req.end();
         } catch (e) {
             resolve(false);
+        }
+    });
+}
+
+function fetchServerDetailsFromPanel(uuid) {
+    return new Promise((resolve) => {
+        const panelUrl = config.panel_url || 'http://127.0.0.1:5000';
+        try {
+            const parsedUrl = new URL(panelUrl);
+            const req = http.request({
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port || 80,
+                path: `/api/remote/servers/${uuid}`,
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${getBearerToken()}`,
+                    'Accept': 'application/json',
+                },
+            }, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(data);
+                        resolve(parsed && parsed.settings ? parsed.settings : null);
+                    } catch (e) {
+                        resolve(null);
+                    }
+                });
+            });
+            req.on('error', () => resolve(null));
+            req.end();
+        } catch (e) {
+            resolve(null);
         }
     });
 }
@@ -197,18 +235,49 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
             if (!uuid) return sendJson(res, 400, { error: 'Server uuid required' });
 
             await fileManager.ensureAppDirectory(uuid);
+
+            // Fetch comprehensive server details from panel
+            const panelSettings = await fetchServerDetailsFromPanel(uuid);
+
+            let port = body.port || panelSettings?.allocations?.default?.port || 5002;
+            if (!port || port <= 5000) {
+                port = 5002;
+            }
+
+            let name = body.name || panelSettings?.meta?.name || uuid;
+
+            // Detect runtime accurately
+            let runtime = (body.runtime || panelSettings?.meta?.runtime || '').toLowerCase();
+            const image = (panelSettings?.container?.image || '').toLowerCase();
+            const startup = (panelSettings?.invocation || '').toLowerCase();
+            const startupFile = (panelSettings?.environment?.STARTUP_FILE || '').toLowerCase();
+
+            if (runtime.includes('python') || image.includes('python') || startup.includes('python') || startupFile.endsWith('.py')) {
+                runtime = 'python';
+            } else if (runtime.includes('php') || image.includes('php') || startup.includes('php') || startupFile.endsWith('.php')) {
+                runtime = 'php';
+            } else if (runtime.includes('static') || image.includes('static') || startup.includes('serve') || startupFile.endsWith('.html')) {
+                runtime = 'static';
+            } else {
+                runtime = 'node';
+            }
+
+            const chosenStartupFile = panelSettings?.environment?.STARTUP_FILE || 
+                (runtime === 'python' ? 'app.py' : (runtime === 'php' ? 'index.php' : (runtime === 'static' ? 'index.html' : 'index.js')));
+
             const app = processManager.registerApp(uuid, {
-                name: body.name || uuid,
-                runtime: body.runtime || 'node',
-                port: body.port || 5000,
-                env: body.env || {},
+                name,
+                runtime,
+                port,
+                startupFile: chosenStartupFile,
+                env: Object.assign({}, panelSettings?.environment || {}, body.env || {}),
             });
 
-            // Ensure starter template files so process never crashes on missing index.js
+            // Ensure starter template files so process never crashes
             processManager.ensureStarterFiles(app);
 
             // Notify panel that installation is completed
-            notifyPanelInstallComplete(uuid).catch(e => console.warn('Could not notify panel install', e.message));
+            await notifyPanelInstallComplete(uuid);
 
             if (body.start_on_completion) {
                 processManager.start(uuid).catch(e => console.error(e));
@@ -251,6 +320,39 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
             if (subPath === '/power' && method === 'POST') {
                 const body = await parseJsonBody(req);
                 const action = (body.action || '').toLowerCase();
+
+                const existingApp = processManager.getApp(uuid);
+                if (!existingApp.port || existingApp.port <= 5000 || !existingApp.startupFile) {
+                    const panelSettings = await fetchServerDetailsFromPanel(uuid);
+                    if (panelSettings) {
+                        let p = panelSettings.allocations?.default?.port || 5002;
+                        if (!p || p <= 5000) p = 5002;
+                        existingApp.port = p;
+                        if (panelSettings.meta?.name) existingApp.name = panelSettings.meta.name;
+
+                        let r = (panelSettings.meta?.runtime || '').toLowerCase();
+                        const img = (panelSettings.container?.image || '').toLowerCase();
+                        const startCmd = (panelSettings.invocation || '').toLowerCase();
+                        const sf = (panelSettings.environment?.STARTUP_FILE || '').toLowerCase();
+
+                        if (r.includes('python') || img.includes('python') || startCmd.includes('python') || sf.endsWith('.py')) {
+                            existingApp.runtime = 'python';
+                        } else if (r.includes('php') || img.includes('php') || startCmd.includes('php') || sf.endsWith('.php')) {
+                            existingApp.runtime = 'php';
+                        } else if (r.includes('static') || img.includes('static') || startCmd.includes('serve') || sf.endsWith('.html')) {
+                            existingApp.runtime = 'static';
+                        } else {
+                            existingApp.runtime = 'node';
+                        }
+
+                        existingApp.startupFile = panelSettings.environment?.STARTUP_FILE ||
+                            (existingApp.runtime === 'python' ? 'app.py' : (existingApp.runtime === 'php' ? 'index.php' : (existingApp.runtime === 'static' ? 'index.html' : 'index.js')));
+
+                        if (panelSettings.environment) {
+                            existingApp.env = Object.assign({}, panelSettings.environment, existingApp.env || {});
+                        }
+                    }
+                }
 
                 if (action === 'start') await processManager.start(uuid);
                 else if (action === 'stop') await processManager.stop(uuid);

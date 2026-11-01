@@ -42,13 +42,29 @@ class ServerConfigurationStructureService
      */
     protected function returnCurrentFormat(Server $server): array
     {
+        $runtime = $server->runtime;
+        if (!$runtime) {
+            $image = strtolower($server->image ?? '');
+            $startup = strtolower($server->startup ?? '');
+            $eggName = strtolower($server->egg ? $server->egg->name : '');
+            if (str_contains($image, 'python') || str_contains($startup, 'python') || str_contains($eggName, 'python')) {
+                $runtime = 'python';
+            } elseif (str_contains($image, 'php') || str_contains($startup, 'php') || str_contains($eggName, 'php')) {
+                $runtime = 'php';
+            } elseif (str_contains($image, 'static') || str_contains($eggName, 'static') || str_contains($eggName, 'html')) {
+                $runtime = 'static';
+            } else {
+                $runtime = 'node';
+            }
+        }
+
         return [
             'uuid' => $server->uuid,
             'meta' => [
                 'name' => $server->name,
                 'description' => $server->description,
                 'domain' => $server->domain,
-                'runtime' => $server->runtime ?? 'node',
+                'runtime' => $runtime,
                 'runtime_version' => $server->runtime_version,
                 'is_native' => $server->is_native ?? true,
             ],

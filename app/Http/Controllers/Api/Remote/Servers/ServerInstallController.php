@@ -77,11 +77,15 @@ class ServerInstallController extends Controller
 
         // If the server successfully installed, fire installed event.
         // This logic allows individually disabling install and reinstall notifications separately.
-        $isInitialInstall = is_null($server->installed_at);
-        if ($isInitialInstall && config()->get('pterodactyl.email.send_install_notification', true)) {
-            $this->eventDispatcher->dispatch(new ServerInstalled($server));
-        } elseif (!$isInitialInstall && config()->get('pterodactyl.email.send_reinstall_notification', true)) {
-            $this->eventDispatcher->dispatch(new ServerInstalled($server));
+        try {
+            $isInitialInstall = is_null($server->installed_at);
+            if ($isInitialInstall && config()->get('pterodactyl.email.send_install_notification', false)) {
+                $this->eventDispatcher->dispatch(new ServerInstalled($server));
+            } elseif (!$isInitialInstall && config()->get('pterodactyl.email.send_reinstall_notification', false)) {
+                $this->eventDispatcher->dispatch(new ServerInstalled($server));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Could not send install notification email: ' . $e->getMessage());
         }
 
         return new JsonResponse([], Response::HTTP_NO_CONTENT);

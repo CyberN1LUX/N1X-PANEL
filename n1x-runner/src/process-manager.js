@@ -12,13 +12,18 @@ class ProcessManager extends EventEmitter {
     }
 
     registerApp(uuid, options = {}) {
+        let safePort = options.port;
+        if (!safePort || safePort <= 5000) {
+            safePort = 5002;
+        }
+
         if (!this.apps.has(uuid)) {
             const app = {
                 uuid,
                 name: options.name || uuid,
                 runtime: options.runtime || 'node',
                 startupFile: options.startupFile || '',
-                port: options.port || 5000,
+                port: safePort,
                 env: options.env || {},
                 process: null,
                 status: 'offline', // 'offline' | 'starting' | 'running' | 'stopping'
@@ -40,6 +45,9 @@ class ProcessManager extends EventEmitter {
             // Update existing registration
             const app = this.apps.get(uuid);
             Object.assign(app, options);
+            if (safePort > 5000) {
+                app.port = safePort;
+            }
             if (options.env) {
                 app.env = Object.assign(app.env, options.env);
             }
@@ -136,6 +144,10 @@ class ProcessManager extends EventEmitter {
     }
 
     ensureStarterFiles(app) {
+        if (!app.port || app.port <= 5000) {
+            app.port = 5002;
+        }
+
         const cwd = app.appDir;
         if (!fs.existsSync(cwd)) {
             fs.mkdirSync(cwd, { recursive: true });
@@ -328,6 +340,9 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
     }
 
     async resolveExecutionCommand(app) {
+        if (!app.port || app.port <= 5000) {
+            app.port = 5002;
+        }
         this.ensureStarterFiles(app);
         const cwd = app.appDir;
         const runtime = (app.runtime || 'node').toLowerCase();
@@ -359,7 +374,7 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
             if (!startup) {
                 if (fs.existsSync(path.join(cwd, 'app.py'))) startup = 'app.py';
                 else if (fs.existsSync(path.join(cwd, 'main.py'))) startup = 'main.py';
-                else startup = 'main.py';
+                else startup = 'app.py';
             }
 
             // Check if virtualenv exists
@@ -367,7 +382,18 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
                 ? path.join(cwd, 'venv', 'Scripts', 'python.exe')
                 : path.join(cwd, 'venv', 'bin', 'python');
 
-            const pyCmd = fs.existsSync(venvPython) ? `"${venvPython}"` : (process.platform === 'win32' ? 'python' : 'python3');
+            let pyCmd = 'python';
+            if (fs.existsSync(venvPython)) {
+                pyCmd = venvPython;
+            } else if (process.platform === 'win32') {
+                if (fs.existsSync('C:\\Python314\\python.exe')) {
+                    pyCmd = 'C:\\Python314\\python.exe';
+                } else {
+                    pyCmd = 'python';
+                }
+            } else {
+                pyCmd = 'python3';
+            }
             return { cmd: pyCmd, args: [startup], cwd, env: app.env };
         }
 
@@ -377,19 +403,49 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
             if (fs.existsSync(path.join(cwd, 'public', 'index.php'))) {
                 docRoot = path.join(cwd, 'public');
             }
+            let phpCmd = 'php';
+            if (process.platform === 'win32' && fs.existsSync('V:\\Code Project\\PHP PROJECTS\\php\\php.exe')) {
+                phpCmd = 'V:\\Code Project\\PHP PROJECTS\\php\\php.exe';
+            }
             return {
-                cmd: 'php',
-                args: ['-S', `0.0.0.0:${app.port}`, '-t', `"${docRoot}"`],
+                cmd: phpCmd,
+                args: ['-S', `0.0.0.0:${app.port}`, '-t', docRoot],
                 cwd,
                 env: app.env,
             };
         }
 
         // 4. STATIC
-        // Run lightweight static server using npx serve or node static server
+        // Run self-contained lightweight static server using node (no npm download required)
+        const staticServerScript = path.join(cwd, '.static_server.js');
+        if (!fs.existsSync(staticServerScript)) {
+            const serverCode = `
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const port = process.env.PORT || ${app.port};
+const mimeTypes = {
+    '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
+    '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif',
+    '.svg': 'image/svg+xml', '.json': 'application/json'
+};
+http.createServer((req, res) => {
+    let rawPath = req.url.split('?')[0];
+    let filePath = path.join(__dirname, rawPath === '/' ? 'index.html' : rawPath);
+    if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) filePath = path.join(__dirname, 'index.html');
+    if (!fs.existsSync(filePath)) { res.writeHead(404); return res.end('Not Found'); }
+    const ext = path.extname(filePath).toLowerCase();
+    res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+    fs.createReadStream(filePath).pipe(res);
+}).listen(port, '0.0.0.0', () => {
+    console.log('[N1X-PANEL] Static server running on http://0.0.0.0:' + port);
+});
+`.trim();
+            fs.writeFileSync(staticServerScript, serverCode, 'utf8');
+        }
         return {
-            cmd: 'npx',
-            args: ['-y', 'serve', '-l', String(app.port), '-s', '.'],
+            cmd: process.execPath,
+            args: ['.static_server.js'],
             cwd,
             env: app.env,
         };

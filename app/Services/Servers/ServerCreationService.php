@@ -136,6 +136,24 @@ class ServerCreationService
     {
         $uuid = $this->generateUniqueUuidCombo();
 
+        $runtime = Arr::get($data, 'runtime');
+        if (!$runtime) {
+            $image = strtolower(Arr::get($data, 'image') ?? '');
+            $startup = strtolower(Arr::get($data, 'startup') ?? '');
+            $egg = \Pterodactyl\Models\Egg::find(Arr::get($data, 'egg_id'));
+            $eggName = strtolower($egg ? $egg->name : '');
+
+            if (str_contains($image, 'python') || str_contains($startup, 'python') || str_contains($eggName, 'python')) {
+                $runtime = 'python';
+            } elseif (str_contains($image, 'php') || str_contains($startup, 'php') || str_contains($eggName, 'php')) {
+                $runtime = 'php';
+            } elseif (str_contains($image, 'static') || str_contains($eggName, 'static') || str_contains($eggName, 'html')) {
+                $runtime = 'static';
+            } else {
+                $runtime = 'node';
+            }
+        }
+
         /** @var Server $model */
         $model = $this->repository->create([
             'external_id' => Arr::get($data, 'external_id'),
@@ -144,6 +162,8 @@ class ServerCreationService
             'node_id' => Arr::get($data, 'node_id'),
             'name' => Arr::get($data, 'name'),
             'description' => Arr::get($data, 'description') ?? '',
+            'runtime' => $runtime,
+            'is_native' => true,
             'status' => Server::STATUS_INSTALLING,
             'skip_scripts' => Arr::get($data, 'skip_scripts') ?? isset($data['skip_scripts']),
             'owner_id' => Arr::get($data, 'owner_id'),

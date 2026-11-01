@@ -71,8 +71,9 @@ class EggConfigurationService
         ];
     }
 
-    protected function replacePlaceholders(Server $server, object $configs): array
+    protected function replacePlaceholders(Server $server, object|array|null $configs): array
     {
+        $configs = (object) ($configs ?? []);
         // Get the legacy configuration structure for the server so that we
         // can property map the egg placeholders to values.
         $structure = $this->configurationStructureService->handle($server, [], true);

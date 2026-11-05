@@ -1,0 +1,30 @@
+# Thank you for developing with Blueprint.
+# For documentation about conf.yml, refer to ptero.shop/dev/conf.
+
+info:
+  name: "Recolor"
+  identifier: "recolor"
+  description: "A Pterodactyl dark mode theme."
+  flags: ""
+  version: "1.3"
+  target: "alpha-L53"
+  author: "sp11rum"
+  icon: "assets/logo.jpg"
+  website: "https://github.com/sp11rum/recolor"
+
+admin:
+  view: "admin/view.blade.php"
+  controller: ""
+  css: ""
+  wrapper: ""
+
+dashboard:
+  wrapper: ""
+  css: "client/client.style.css"
+
+data:
+  directory: ""
+  public: "public"
+
+database:
+  migrations: ""

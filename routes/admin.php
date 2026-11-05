@@ -226,3 +226,21 @@ Route::group(['prefix' => 'nests'], function () {
     Route::delete('/egg/{egg:id}', [Admin\Nests\EggController::class, 'destroy']);
     Route::delete('/egg/{egg:id}/variables/{variable:id}', [Admin\Nests\EggVariableController::class, 'destroy']);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Cloudflare Zero Trust Tunnel Routes
+|--------------------------------------------------------------------------
+|
+| Endpoint: /admin/tunnel
+|
+*/
+Route::group(['prefix' => 'tunnel'], function () {
+    Route::get('/', [Admin\TunnelController::class, 'index'])->name('admin.tunnel');
+    Route::post('/save', [Admin\TunnelController::class, 'saveToken'])->name('admin.tunnel.save');
+    Route::post('/install', [Admin\TunnelController::class, 'install'])->name('admin.tunnel.install');
+    Route::post('/start', [Admin\TunnelController::class, 'start'])->name('admin.tunnel.start');
+    Route::post('/stop', [Admin\TunnelController::class, 'stop'])->name('admin.tunnel.stop');
+});
+
+

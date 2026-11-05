@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>{{ config('app.name', 'N1X PANEL') }}</title>
+        <title>{{ config('app.name', 'N1LUX PETRO') }}</title>
 
         @section('meta')
             <meta charset="utf-8">
@@ -9,78 +9,80 @@
             <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
             <meta name="csrf-token" content="{{ csrf_token() }}">
             <meta name="robots" content="noindex">
-            <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png">
-            <link rel="icon" type="image/png" href="/favicons/favicon-32x32.png" sizes="32x32">
-            <link rel="icon" type="image/png" href="/favicons/favicon-16x16.png" sizes="16x16">
-            <link rel="manifest" href="/favicons/manifest.json">
-            <link rel="mask-icon" href="/favicons/safari-pinned-tab.svg" color="#22c55e">
-            <link rel="shortcut icon" href="/favicons/favicon.ico">
+            <link rel="apple-touch-icon" sizes="180x180" href="/assets/n1lux-logo.jpg">
+            <link rel="icon" type="image/jpeg" href="/assets/n1lux-logo.jpg">
+            <link rel="shortcut icon" href="/assets/n1lux-logo.jpg">
             <meta name="msapplication-config" content="/favicons/browserconfig.xml">
-            <meta name="theme-color" content="#22c55e">
+            <meta name="theme-color" content="#1A1A1A">
         @show
 
         <style>
             :root {
-                --n1x-bg: #0B0F0E;
-                --n1x-sidebar: #101715;
-                --n1x-card: #151E1A;
-                --n1x-green: #22C55E;
-                --n1x-green-sec: #16A34A;
-                --n1x-green-accent: #86EFAC;
-                --n1x-text: #F0FDF4;
-                --n1x-text-sec: #94A3A0;
-                --n1x-border: #26352E;
+                --one: #1A1A1A;
+                --two: #262626;
+                --three: #333333;
+                --bg: url("/themes/recolor/dark.jpg");
             }
             html, body {
-                background-color: #0B0F0E !important;
-                color: #F0FDF4 !important;
+                background-color: #1A1A1A !important;
+                background-image: var(--bg);
+                background-attachment: fixed;
+                background-repeat: no-repeat;
+                background-position: center center;
+                background-size: cover;
+                color: #E0E0E0 !important;
                 margin: 0;
                 padding: 0;
+                min-height: 100vh;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             }
-            /* Dark background overrides for React components */
+            #app, div[id="app"] {
+                background-color: #1A1A1A !important;
+                min-height: 100vh;
+            }
+            /* Dark background overrides for React components - Prevent white flashing */
             .bg-neutral-900, .bg-neutral-800, .bg-gray-900, .bg-gray-800 {
-                background-color: #0B0F0E !important;
+                background-color: rgba(26, 26, 26, 0.95) !important;
             }
             .bg-neutral-700, .bg-gray-700 {
-                background-color: #101715 !important;
+                background-color: rgba(38, 38, 38, 0.95) !important;
             }
             .bg-neutral-600, .bg-gray-600 {
-                background-color: #151E1A !important;
+                background-color: rgba(51, 51, 51, 0.95) !important;
             }
-            /* Green brand highlights */
-            .text-primary-400, .text-primary-500, .text-cyan-500, .text-blue-500 {
-                color: #22C55E !important;
+            .bg-white {
+                background-color: #242424 !important;
+                color: #E0E0E0 !important;
             }
-            .bg-primary-500, .bg-primary-600, .bg-cyan-500, .bg-blue-600 {
-                background-color: #22C55E !important;
-                color: #0B0F0E !important;
+            /* Recolor dark style for login form card */
+            .LoginFormContainer__Container-sc-cyh04c-0 > form > div,
+            .LoginFormContainer___StyledDiv-sc-cyh04c-3 {
+                background-color: #222222 !important;
+                border: 1px solid #333333 !important;
+                color: #E0E0E0 !important;
             }
-            .border-primary-500 {
-                border-color: #22C55E !important;
-            }
-            /* Initial Loader - Prevents white screen */
+            /* Initial Loader - Recolor Dark Theme */
             #n1x-loader {
                 position: fixed;
                 top: 0;
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background: #0B0F0E;
+                background: #1A1A1A;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
                 z-index: 99999;
-                transition: opacity 0.3s ease;
+                transition: opacity 0.35s ease;
             }
             .n1x-spinner {
-                width: 48px;
-                height: 48px;
-                border: 3px solid rgba(34, 197, 94, 0.2);
-                border-top-color: #22C55E;
+                width: 44px;
+                height: 44px;
+                border: 3px solid rgba(255, 255, 255, 0.12);
+                border-top-color: #3b82f6;
                 border-radius: 50%;
-                animation: n1x-spin 0.8s linear infinite;
+                animation: n1x-spin 0.75s linear infinite;
             }
             @keyframes n1x-spin {
                 to { transform: rotate(360deg); }
@@ -103,11 +105,14 @@
         @yield('assets')
 
         @include('layouts.scripts')
+
+        <link rel="stylesheet" href="/themes/recolor/recolor.css">
     </head>
     <body class="{{ $css['body'] ?? 'bg-neutral-900' }}">
         <div id="n1x-loader">
+            <img src="/assets/n1lux-logo.jpg" alt="N1LUX PETRO" style="width: 54px; height: 54px; border-radius: 12px; box-shadow: 0 0 20px rgba(132, 204, 22, 0.4); margin-bottom: 14px; object-fit: cover;">
             <div class="n1x-spinner"></div>
-            <p style="color: #22C55E; margin-top: 16px; font-weight: 700; letter-spacing: 0.15em; font-size: 14px;">N1X PANEL</p>
+            <p style="color: #94a3b8; margin-top: 14px; font-weight: 700; letter-spacing: 0.12em; font-size: 13px;">N1LUX PETRO</p>
         </div>
 
         @section('content')
@@ -122,27 +127,29 @@
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 var app = document.getElementById('app');
+                var loader = document.getElementById('n1x-loader');
+
                 function removeLoader() {
-                    var loader = document.getElementById('n1x-loader');
                     if (loader) {
                         loader.style.opacity = '0';
-                        setTimeout(function() { if (loader.parentNode) loader.remove(); }, 350);
+                        setTimeout(function() { 
+                            if (loader && loader.parentNode) loader.parentNode.removeChild(loader); 
+                        }, 350);
                     }
                 }
-                if (app) {
-                    if (app.children.length > 0) {
-                        removeLoader();
-                    } else {
-                        var observer = new MutationObserver(function() {
-                            if (app.children.length > 0) {
-                                removeLoader();
-                                observer.disconnect();
-                            }
-                        });
-                        observer.observe(app, { childList: true, subtree: true });
-                        // Fallback removal after 3 seconds if app already rendered
-                        setTimeout(removeLoader, 3000);
-                    }
+
+                if (app && app.children.length > 0) {
+                    removeLoader();
+                } else if (app) {
+                    var observer = new MutationObserver(function() {
+                        if (app.children.length > 0) {
+                            removeLoader();
+                            observer.disconnect();
+                        }
+                    });
+                    observer.observe(app, { childList: true, subtree: true });
+                    // Maximum wait before revealing DOM
+                    setTimeout(removeLoader, 4000);
                 } else {
                     removeLoader();
                 }

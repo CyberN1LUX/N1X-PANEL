@@ -15,8 +15,8 @@
 @section('content')
 <div class="row">
     <div class="col-xs-12">
-        <div class="alert alert-danger">
-            Eggs are a powerful feature of Pterodactyl Panel that allow for extreme flexibility and configuration. Please note that while powerful, modifying an egg wrongly can very easily brick your servers and cause more problems. Please avoid editing our default eggs — those provided by <code>support@pterodactyl.io</code> — unless you are absolutely sure of what you are doing.
+        <div class="alert alert-info" style="background: rgba(59, 130, 246, 0.12) !important; border: 1px solid rgba(59, 130, 246, 0.3) !important; color: #93c5fd !important;">
+            <i class="fa fa-info-circle mr-1"></i> Eggs define runtime environments and startup configurations for <strong>N1LUX PETRO</strong>. All native multi-language stacks (Node.js, Python, PHP, Bun, Go, Java, Rust, C++) are pre-configured. Avoid modifying core runtime eggs unless customizing startup flags.
         </div>
     </div>
 </div>

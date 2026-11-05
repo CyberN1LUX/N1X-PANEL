@@ -141,11 +141,45 @@ function fetchServerDetailsFromPanel(uuid) {
     });
 }
 
+function proxyRequestToPort(req, res, targetPort) {
+    const proxyReq = http.request({
+        hostname: '127.0.0.1',
+        port: targetPort,
+        path: req.url,
+        method: req.method,
+        headers: {
+            ...req.headers,
+            'x-forwarded-host': req.headers.host,
+            'x-forwarded-for': req.socket.remoteAddress,
+        },
+    }, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res);
+    });
+    proxyReq.on('error', () => {
+        res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(`Bad Gateway: Unable to connect to application on port ${targetPort}`);
+    });
+    req.pipe(proxyReq);
+}
+
 // HTTP Server
 const server = http.createServer(async (req, res) => {
+    const host = (req.headers.host || '').split(':')[0].toLowerCase();
     const url = parseUrl(req.url, true);
     const pathname = url.pathname;
     const method = req.method.toUpperCase();
+
+    // Check host-based domain routing for custom domains (e.g. python.n1lux.bond)
+    if (host && host !== 'localhost' && host !== '127.0.0.1' && !pathname.startsWith('/api')) {
+        let targetPort = null;
+        if (host.includes('python')) targetPort = 5002;
+        else if (host.includes('panel')) targetPort = 5000;
+        
+        if (targetPort) {
+            return proxyRequestToPort(req, res, targetPort);
+        }
+    }
 
     // CORS preflight
     if (method === 'OPTIONS') {
@@ -256,6 +290,10 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
                 runtime = 'python';
             } else if (runtime.includes('php') || image.includes('php') || startup.includes('php') || startupFile.endsWith('.php')) {
                 runtime = 'php';
+            } else if (runtime.includes('bun') || image.includes('bun') || startup.includes('bun')) {
+                runtime = 'bun';
+            } else if (runtime.includes('go') || image.includes('go') || startup.includes('go run')) {
+                runtime = 'go';
             } else if (runtime.includes('static') || image.includes('static') || startup.includes('serve') || startupFile.endsWith('.html')) {
                 runtime = 'static';
             } else {
@@ -263,7 +301,7 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
             }
 
             const chosenStartupFile = panelSettings?.environment?.STARTUP_FILE || 
-                (runtime === 'python' ? 'app.py' : (runtime === 'php' ? 'index.php' : (runtime === 'static' ? 'index.html' : 'index.js')));
+                (runtime === 'python' ? 'app.py' : (runtime === 'php' ? 'index.php' : (runtime === 'bun' ? 'index.ts' : (runtime === 'go' ? 'main.go' : (runtime === 'static' ? 'index.html' : 'index.js')))));
 
             const app = processManager.registerApp(uuid, {
                 name,
@@ -569,6 +607,39 @@ setInterval(() => {
     }
 }, 2000);
 
+// Cloudflare Tunnel Auto-Supervisor
+function startCloudflareTunnelSupervisor() {
+    try {
+        const envPath = path.resolve(__dirname, '../../.env');
+        let token = process.env.CLOUDFLARE_TUNNEL_TOKEN;
+        if (!token && fs.existsSync(envPath)) {
+            const envContent = fs.readFileSync(envPath, 'utf8');
+            const match = envContent.match(/CLOUDFLARE_TUNNEL_TOKEN=([^\r\n]+)/);
+            if (match) token = match[1].trim();
+        }
+        if (!token) return;
+
+        const cloudflaredExe = path.resolve(__dirname, '../../cloudflared.exe');
+        if (!fs.existsSync(cloudflaredExe)) return;
+
+        console.log('[N1X-TUNNEL] Launching Cloudflare Tunnel with HTTP/2 persistent connection...');
+        const child = require('child_process').spawn(cloudflaredExe, [
+            'tunnel',
+            '--protocol', 'http2',
+            '--no-autoupdate',
+            'run',
+            '--token', token
+        ], { stdio: 'ignore' });
+
+        child.on('exit', (code) => {
+            console.log(`[N1X-TUNNEL] cloudflared exited (code ${code}), auto-restarting in 4s...`);
+            setTimeout(startCloudflareTunnelSupervisor, 4000);
+        });
+    } catch (e) {
+        console.error('[N1X-TUNNEL] Error starting tunnel supervisor:', e.message);
+    }
+}
+
 const port = process.env.RUNNER_PORT || config.port || 8080;
 const host = process.env.RUNNER_HOST || config.host || '0.0.0.0';
 
@@ -578,4 +649,7 @@ server.listen(port, host, () => {
     console.log(`\x1b[32m  Listening on: http://${host}:${port}\x1b[0m`);
     console.log(`\x1b[32m  Applications Root: ${config.applications_root}\x1b[0m`);
     console.log(`\x1b[32m===================================================\x1b[0m`);
+
+    // Start auto-supervisor
+    startCloudflareTunnelSupervisor();
 });

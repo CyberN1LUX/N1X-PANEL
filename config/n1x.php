@@ -12,7 +12,7 @@ return [
     */
 
     'panel' => [
-        'name' => env('APP_NAME', 'N1X PANEL'),
+        'name' => env('APP_NAME', 'N1LUX PETRO'),
         'port' => (int) env('PANEL_PORT', 8080),
         'host' => env('PANEL_HOST', '0.0.0.0'),
         'timezone' => env('PANEL_TIMEZONE', 'Asia/Kolkata'),

@@ -3,18 +3,15 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>{{ config('app.name', 'N1X PANEL') }} - @yield('title')</title>
+        <title>{{ config('app.name', 'N1LUX PETRO') }} - @yield('title')</title>
         <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
         <meta name="_token" content="{{ csrf_token() }}">
 
-        <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png">
-        <link rel="icon" type="image/png" href="/favicons/favicon-32x32.png" sizes="32x32">
-        <link rel="icon" type="image/png" href="/favicons/favicon-16x16.png" sizes="16x16">
-        <link rel="manifest" href="/favicons/manifest.json">
-        <link rel="mask-icon" href="/favicons/safari-pinned-tab.svg" color="#22c55e">
-        <link rel="shortcut icon" href="/favicons/favicon.ico">
+        <link rel="apple-touch-icon" sizes="180x180" href="/assets/n1lux-logo.jpg">
+        <link rel="icon" type="image/jpeg" href="/assets/n1lux-logo.jpg">
+        <link rel="shortcut icon" href="/assets/n1lux-logo.jpg">
         <meta name="msapplication-config" content="/favicons/browserconfig.xml">
-        <meta name="theme-color" content="#22c55e">
+        <meta name="theme-color" content="#1A1A1A">
 
         @include('layouts.scripts')
 
@@ -28,116 +25,129 @@
             {!! Theme::css('css/pterodactyl.css?t={cache-version}') !!}
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css">
+            <link rel="stylesheet" href="/themes/recolor/recolor.css">
 
             <style>
-                /* N1X PANEL Green + Dark Theme for AdminLTE */
-                body.skin-blue, .content-wrapper, .main-footer, .modal-content {
-                    background-color: #0B0F0E !important;
-                    color: #F0FDF4 !important;
+                /* Recolor Blueprint Dark Theme for AdminLTE */
+                body.skin-blue, .wrapper, .content-wrapper, .main-footer, .modal-content {
+                    background-image: url("/themes/recolor/dark.jpg") !important;
+                    background-attachment: fixed !important;
+                    background-repeat: no-repeat !important;
+                    background-position: center center !important;
+                    background-size: cover !important;
+                    background-color: #1A1A1A !important;
+                    color: #E0E0E0 !important;
+                }
+                .content-wrapper {
+                    background: transparent !important;
                 }
                 .main-header .navbar, .main-header .logo {
-                    background-color: #101715 !important;
-                    border-bottom: 1px solid #26352E !important;
-                    color: #F0FDF4 !important;
+                    background-color: rgba(26, 26, 26, 0.95) !important;
+                    backdrop-filter: blur(10px) !important;
+                    border-bottom: 1px solid #333333 !important;
+                    color: #FFFFFF !important;
                 }
                 .main-header .logo span {
-                    color: #22C55E !important;
+                    color: #FFFFFF !important;
                     font-weight: 700;
-                    letter-spacing: 0.05em;
                 }
                 .main-sidebar, .sidebar {
-                    background-color: #101715 !important;
-                    border-right: 1px solid #26352E !important;
+                    background-color: rgba(26, 26, 26, 0.95) !important;
+                    backdrop-filter: blur(10px) !important;
+                    border-right: 1px solid #333333 !important;
                 }
                 .sidebar-menu > li.header {
-                    background: #0B0F0E !important;
-                    color: #94A3A0 !important;
-                    border-bottom: 1px solid #26352E;
+                    background: rgba(18, 18, 18, 0.9) !important;
+                    color: #888888 !important;
+                    border-bottom: 1px solid #333333;
                 }
                 .sidebar-menu > li > a {
-                    color: #94A3A0 !important;
+                    color: #B0B0B0 !important;
                     border-left: 3px solid transparent;
                 }
                 .sidebar-menu > li:hover > a, .sidebar-menu > li.active > a {
-                    background-color: #151E1A !important;
-                    color: #22C55E !important;
-                    border-left-color: #22C55E !important;
+                    background-color: #333333 !important;
+                    color: #FFFFFF !important;
+                    border-left-color: #585858 !important;
                 }
                 .box {
-                    background: #151E1A !important;
-                    border: 1px solid #26352E !important;
-                    border-top: 3px solid #22C55E !important;
-                    color: #F0FDF4 !important;
-                    border-radius: 6px;
+                    background: rgba(26, 26, 26, 0.9) !important;
+                    backdrop-filter: blur(12px) !important;
+                    -webkit-backdrop-filter: blur(12px) !important;
+                    border: 1px solid #333333 !important;
+                    border-top: 3px solid #585858 !important;
+                    color: #E0E0E0 !important;
+                    border-radius: 8px !important;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
                 }
                 .box-header {
-                    border-bottom: 1px solid #26352E !important;
-                    color: #F0FDF4 !important;
+                    border-bottom: 1px solid #333333 !important;
+                    color: #FFFFFF !important;
                 }
                 .box-header .box-title, .box-header h3 {
-                    color: #F0FDF4 !important;
+                    color: #FFFFFF !important;
                 }
                 .box-footer {
-                    background-color: #101715 !important;
-                    border-top: 1px solid #26352E !important;
+                    background-color: rgba(26, 26, 26, 0.9) !important;
+                    border-top: 1px solid #333333 !important;
                 }
                 .form-control, .select2-container--default .select2-selection--single {
-                    background-color: #0B0F0E !important;
-                    border: 1px solid #26352E !important;
-                    color: #F0FDF4 !important;
+                    background-color: #262626 !important;
+                    border: 1px solid #444444 !important;
+                    color: #FFFFFF !important;
+                    border-radius: 6px !important;
                 }
                 .form-control:focus {
-                    border-color: #22C55E !important;
-                    box-shadow: 0 0 5px rgba(34, 197, 94, 0.4);
+                    border-color: #777777 !important;
+                    box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
                 }
                 .table {
-                    color: #F0FDF4 !important;
+                    color: #E0E0E0 !important;
                 }
                 .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
-                    border-top: 1px solid #26352E !important;
+                    border-top: 1px solid #333333 !important;
                 }
                 .table-hover > tbody > tr:hover {
-                    background-color: #101715 !important;
+                    background-color: rgba(255, 255, 255, 0.05) !important;
                 }
-                .btn-primary, .btn-success {
-                    background-color: #22C55E !important;
-                    border-color: #16A34A !important;
-                    color: #0B0F0E !important;
-                    font-weight: 600;
+                .btn-primary {
+                    background-color: #3b82f6 !important;
+                    border-color: #2563eb !important;
+                    color: #FFFFFF !important;
                 }
-                .btn-primary:hover, .btn-success:hover {
-                    background-color: #16A34A !important;
-                    border-color: #15803D !important;
+                .btn-success {
+                    background-color: #10b981 !important;
+                    border-color: #059669 !important;
                     color: #FFFFFF !important;
                 }
                 .btn-default {
-                    background-color: #151E1A !important;
-                    border-color: #26352E !important;
-                    color: #F0FDF4 !important;
+                    background-color: #2A2A2A !important;
+                    border-color: #444444 !important;
+                    color: #E0E0E0 !important;
                 }
                 .btn-default:hover {
-                    background-color: #26352E !important;
-                    color: #22C55E !important;
+                    background-color: #383838 !important;
+                    color: #FFFFFF !important;
                 }
                 .nav-tabs-custom {
-                    background: #151E1A !important;
-                    border: 1px solid #26352E !important;
+                    background: #1A1A1A !important;
+                    border: 1px solid #333333 !important;
                 }
                 .nav-tabs-custom > .nav-tabs > li.active {
-                    border-top-color: #22C55E !important;
+                    border-top-color: #585858 !important;
                 }
                 .nav-tabs-custom > .nav-tabs > li.active > a {
-                    background-color: #151E1A !important;
-                    color: #22C55E !important;
+                    background-color: #1A1A1A !important;
+                    color: #FFFFFF !important;
                 }
                 .content-header > h1 {
-                    color: #F0FDF4 !important;
+                    color: #FFFFFF !important;
                 }
                 .content-header > .breadcrumb > li > a {
-                    color: #94A3A0 !important;
+                    color: #888888 !important;
                 }
                 .content-header > .breadcrumb > li.active {
-                    color: #22C55E !important;
+                    color: #CCCCCC !important;
                 }
             </style>
 
@@ -151,8 +161,8 @@
         <div class="wrapper">
             <header class="main-header">
                 <a href="{{ route('index') }}" class="logo">
-                    <img src="/assets/svgs/n1x-logo.svg" alt="N1X" style="height: 24px; vertical-align: middle; margin-right: 6px; display: inline-block;">
-                    <span>{{ config('app.name', 'N1X PANEL') }}</span>
+                    <img src="/assets/n1lux-logo.jpg" alt="N1LUX PETRO" style="height: 28px; width: 28px; border-radius: 6px; vertical-align: middle; margin-right: 8px; display: inline-block; object-fit: cover; box-shadow: 0 0 8px rgba(132, 204, 22, 0.4);">
+                    <span>{{ config('app.name', 'N1LUX PETRO') }}</span>
                 </a>
                 <nav class="navbar navbar-static-top">
                     <a href="#" class="sidebar-toggle" data-toggle="push-menu" role="button">
@@ -164,9 +174,9 @@
                     <div class="navbar-custom-menu">
                         <ul class="nav navbar-nav">
                             <li class="user-menu">
-                                <a href="{{ route('account') }}">
-                                    <img src="https://www.gravatar.com/avatar/{{ md5(strtolower(Auth::user()->email)) }}?s=160" class="user-image" alt="User Image">
-                                    <span class="hidden-xs">{{ Auth::user()->name_first }} {{ Auth::user()->name_last }}</span>
+                                <a href="{{ route('account') }}" style="display: flex; align-items: center; gap: 8px;">
+                                    <img src="/assets/n1lux-logo.jpg" class="user-image" alt="N1LUX Administrator" style="width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1.5px solid #84cc16; margin: 0; box-shadow: 0 0 6px rgba(132, 204, 22, 0.4);">
+                                    <span class="hidden-xs" style="font-weight: 600;">{{ Auth::user()->name_first ?? 'N1LUX' }} {{ Auth::user()->name_last ?? 'Admin' }}</span>
                                 </a>
                             </li>
                             <li>
@@ -235,6 +245,11 @@
                                 <i class="fa fa-th-large"></i> <span>Nests</span>
                             </a>
                         </li>
+                        <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.tunnel') ?: 'active' }}">
+                            <a href="{{ route('admin.tunnel') }}">
+                                <i class="fa fa-cloud"></i> <span>Cloudflare Tunnel</span>
+                            </a>
+                        </li>
                     </ul>
                 </section>
             </aside>
@@ -245,7 +260,7 @@
                 <section class="content">
                     <div class="row">
                         <div class="col-xs-12">
-                            @if (count($errors) > 0)
+                            @if (isset($errors) && count($errors) > 0)
                                 <div class="alert alert-danger">
                                     There was an error validating the data provided.<br><br>
                                     <ul>
@@ -272,7 +287,7 @@
                     <strong><i class="fa fa-fw {{ $appIsGit ? 'fa-git-square' : 'fa-code-fork' }}"></i></strong> {{ $appVersion }}<br />
                     <strong><i class="fa fa-fw fa-clock-o"></i></strong> {{ round(microtime(true) - LARAVEL_START, 3) }}s
                 </div>
-                Copyright &copy; 2026 <a href="/">N1X PANEL</a>. Multi-Language Hosting Control Panel.
+                Copyright &copy; 2026 <a href="/">N1LUX PETRO</a>. Multi-Language Hosting Control Panel.
             </footer>
         </div>
         @section('footer-scripts')

@@ -1,3 +1,47 @@
+<div align="center">
+
+# ⚡ N1LUX PETRO PANEL (N1X PANEL)
+### Multi-Language Docker-Free Cloud Hosting Control Panel
+
+[![One-Line Install](https://img.shields.io/badge/Install-Automated%20Installer-brightgreen?style=for-the-badge&logo=gnu-bash)](https://github.com/CyberN1LUX/N1X-PANEL)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
+</div>
+
+## 🚀 One-Line Automated Installer (Debian / Ubuntu)
+
+Run this single command on your Debian / Ubuntu server (as **root**) to open the non-stop installer menu:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/CyberN1LUX/N1X-PANEL/main/install.sh)
+```
+
+> Not logged in as root? Run `sudo -i` first, then execute the command above.
+
+### 🎛️ Installer Menu
+
+| Option | Action |
+| :---: | :--- |
+| **1** | **Clone / Update Code** — clone the repository or pull the latest `main` branch. |
+| **2** | **Install Everything & Setup** — install all dependencies, build the panel, configure the database, runner, admin account and systemd services. |
+| **3** | **Port Management** — change the panel port, restart services, view status and open the firewall port. |
+
+The installer supports Debian and Ubuntu and sets up:
+
+- **PHP 8.2 / 8.3** with all required extensions and **Composer**
+- **Node.js 22 LTS + Yarn** with a production frontend build
+- **Python 3 + venv/pip** for Python application hosting
+- **MariaDB** database, **Redis** queue backend and **Nginx** reverse proxy
+- `.env` generation, migrations, seeders and the native `n1x-runner` node
+- `n1x-panel`, `n1x-runner` and `n1x-queue` systemd services (auto-start on boot)
+
+**Default install directory:** `/opt/n1x-panel`  
+**Default panel port:** `8000` — choose another port during setup or later from menu option **3**.
+
+After installation the panel is available at `http://YOUR_SERVER_IP:<PORT>`, and the installer prints the administrator credentials plus the service management commands.
+
+---
+
 <p align="center">
   <a href="https://pterodactyl.io">
     <picture>

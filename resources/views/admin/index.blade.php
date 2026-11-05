@@ -27,9 +27,9 @@
             </div>
             <div class="box-body">
                 @if ($version->isLatestPanel())
-                    You are running {{ config('app.name', 'N1X PANEL') }} version <code>{{ config('app.version') }}</code>. Your panel is up-to-date!
+                    You are running {{ config('app.name', 'N1LUX PETRO') }} version <code>{{ config('app.version') }}</code>. Your panel is up-to-date!
                 @else
-                    You are running {{ config('app.name', 'N1X PANEL') }} version <code>{{ config('app.version') }}</code>. System operating normally.
+                    You are running {{ config('app.name', 'N1LUX PETRO') }} version <code>{{ config('app.version') }}</code>. System operating normally.
                 @endif
             </div>
         </div>

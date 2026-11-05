@@ -337,6 +337,56 @@ p { color: #94A3A0; font-size: 14px; margin: 8px 0; }
                 this.appendLog(app.uuid, `\x1b[32m[N1X-RUNNER] Created default static HTML file (index.html)\x1b[0m`);
             }
         }
+
+        // 5. BUN
+        if (runtime.includes('bun')) {
+            if (!fs.existsSync(path.join(cwd, 'index.ts')) && !fs.existsSync(path.join(cwd, 'index.js'))) {
+                const starterBun = `// Auto-generated N1X PANEL Bun Starter
+const port = Number(process.env.PORT || ${app.port || 5000});
+Bun.serve({
+    port,
+    fetch(req) {
+        return new Response(\`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>N1X PANEL - Bun</title>
+<style>body{background:#0B0F0E;color:#F0FDF4;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}
+.card{background:#151E1A;border:1px solid #26352E;padding:36px;border-radius:12px;text-align:center;max-width:500px;}h1{color:#FBF0DF;}
+</style></head><body><div class="card"><h1>N1X PANEL &bull; Bun</h1><p>Running on Port \${port}</p></div></body></html>\`, {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
+    }
+});
+console.log(\`[N1X-PANEL] Bun server running on port \${port}\`);
+`;
+                fs.writeFileSync(path.join(cwd, 'index.ts'), starterBun, 'utf8');
+                this.appendLog(app.uuid, `\x1b[32m[N1X-RUNNER] Created default Bun starter file (index.ts)\x1b[0m`);
+            }
+        }
+
+        // 6. GO
+        if (runtime.includes('go')) {
+            if (!fs.existsSync(path.join(cwd, 'main.go'))) {
+                const starterGo = `package main
+import (
+    "fmt"
+    "net/http"
+    "os"
+)
+func main() {
+    port := os.Getenv("PORT")
+    if port == "" { port = "${app.port || 5000}" }
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "text/html; charset=utf-8")
+        fmt.Fprintf(w, "<!DOCTYPE html><html><body style='background:#0B0F0E;color:#F0FDF4;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;'><div style='background:#151E1A;padding:36px;border-radius:12px;text-align:center;'><h1 style='color:#00ADD8;'>N1X PANEL &bull; Go</h1><p>Running on Port "+port+"</p></div></body></html>")
+    })
+    fmt.Println("[N1X-PANEL] Go server running on port " + port)
+    http.ListenAndServe(":"+port, nil)
+}
+`;
+                fs.writeFileSync(path.join(cwd, 'main.go'), starterGo, 'utf8');
+                this.appendLog(app.uuid, `\x1b[32m[N1X-RUNNER] Created default Go starter file (main.go)\x1b[0m`);
+            }
+        }
     }
 
     async resolveExecutionCommand(app) {

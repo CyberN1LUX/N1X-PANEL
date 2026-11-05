@@ -347,11 +347,38 @@ current_panel_port() {
 service_state() {
     local svc="$1"
     local state=""
-    if ! systemd_available; then
-        printf 'unknown'
-        return
+
+    if systemd_available; then
+        state="$(systemctl is-active "$svc" 2>/dev/null || true)"
+        if [ "$state" = "active" ]; then
+            printf 'active'
+            return
+        fi
     fi
-    state="$(systemctl is-active "$svc" 2>/dev/null || true)"
+
+    case "$svc" in
+        *panel*)
+            local port
+            port="$(current_panel_port)"
+            if port_in_use "$port" || pgrep -f "artisan serve.*$port" >/dev/null 2>&1; then
+                printf 'active'
+                return
+            fi
+            ;;
+        *runner*)
+            if port_in_use "$RUNNER_PORT" || pgrep -f "n1x-runner.*index.js" >/dev/null 2>&1; then
+                printf 'active'
+                return
+            fi
+            ;;
+        *queue*)
+            if pgrep -f "artisan queue:work" >/dev/null 2>&1; then
+                printf 'active'
+                return
+            fi
+            ;;
+    esac
+
     printf '%s' "${state:-inactive}"
 }
 
@@ -737,6 +764,99 @@ install_node() {
     return 0
 }
 
+ensure_mariadb_running() {
+    if mysqladmin ping >/dev/null 2>&1 || mysql -e "SELECT 1" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    mkdir -p /var/run/mysqld /var/log/mysql /var/lib/mysql
+    chown -R mysql:mysql /var/run/mysqld /var/log/mysql /var/lib/mysql 2>/dev/null || true
+    chmod 777 /var/run/mysqld 2>/dev/null || true
+
+    if [ ! -d /var/lib/mysql/mysql ]; then
+        if command -v mariadb-install-db >/dev/null 2>&1; then
+            mariadb-install-db --user=mysql --datadir=/var/lib/mysql >>"$LOG_FILE" 2>&1 || true
+        elif command -v mysql_install_db >/dev/null 2>&1; then
+            mysql_install_db --user=mysql --datadir=/var/lib/mysql >>"$LOG_FILE" 2>&1 || true
+        fi
+    fi
+
+    if systemd_available; then
+        systemctl enable --now mariadb >>"$LOG_FILE" 2>&1 || systemctl enable --now mysql >>"$LOG_FILE" 2>&1 || true
+    fi
+
+    if ! mysqladmin ping >/dev/null 2>&1 && command -v service >/dev/null 2>&1; then
+        service mariadb start >>"$LOG_FILE" 2>&1 || service mysql start >>"$LOG_FILE" 2>&1 || true
+    fi
+
+    if ! mysqladmin ping >/dev/null 2>&1 && [ -x /etc/init.d/mariadb ]; then
+        /etc/init.d/mariadb start >>"$LOG_FILE" 2>&1 || true
+    fi
+    if ! mysqladmin ping >/dev/null 2>&1 && [ -x /etc/init.d/mysql ]; then
+        /etc/init.d/mysql start >>"$LOG_FILE" 2>&1 || true
+    fi
+
+    if ! mysqladmin ping >/dev/null 2>&1; then
+        if command -v mysqld_safe >/dev/null 2>&1; then
+            nohup mysqld_safe --skip-syslog >>"$LOG_FILE" 2>&1 &
+        elif [ -x /usr/bin/mysqld_safe ]; then
+            nohup /usr/bin/mysqld_safe --skip-syslog >>"$LOG_FILE" 2>&1 &
+        elif command -v mariadbd >/dev/null 2>&1; then
+            nohup su -s /bin/sh mysql -c "mariadbd --skip-syslog" >>"$LOG_FILE" 2>&1 &
+        fi
+    fi
+
+    for i in $(seq 1 15); do
+        if mysqladmin ping >/dev/null 2>&1 || mysql -e "SELECT 1" >/dev/null 2>&1 || [ -S /var/run/mysqld/mysqld.sock ]; then
+            sleep 1
+            return 0
+        fi
+        sleep 1
+    done
+
+    return 1
+}
+
+ensure_redis_running() {
+    if command -v redis-cli >/dev/null 2>&1 && redis-cli ping >/dev/null 2>&1; then
+        return 0
+    fi
+
+    mkdir -p /var/run/redis /var/log/redis
+    chown -R redis:redis /var/run/redis /var/log/redis 2>/dev/null || true
+
+    if systemd_available; then
+        systemctl enable --now redis-server >>"$LOG_FILE" 2>&1 || true
+    fi
+    if command -v service >/dev/null 2>&1; then
+        service redis-server start >>"$LOG_FILE" 2>&1 || true
+    elif [ -x /etc/init.d/redis-server ]; then
+        /etc/init.d/redis-server start >>"$LOG_FILE" 2>&1 || true
+    else
+        nohup redis-server --daemonize yes >>"$LOG_FILE" 2>&1 &
+    fi
+
+    for i in $(seq 1 5); do
+        if command -v redis-cli >/dev/null 2>&1 && redis-cli ping >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+ensure_nginx_running() {
+    if systemd_available; then
+        systemctl enable --now nginx >>"$LOG_FILE" 2>&1 || true
+    fi
+    if command -v service >/dev/null 2>&1; then
+        service nginx start >>"$LOG_FILE" 2>&1 || true
+    elif [ -x /etc/init.d/nginx ]; then
+        /etc/init.d/nginx start >>"$LOG_FILE" 2>&1 || true
+    fi
+    return 0
+}
+
 install_runtime_services() {
     if ! run_silent "Installing MariaDB" apt-get install -y -q mariadb-server mariadb-client; then
         status_fail "Could not install MariaDB."
@@ -753,32 +873,20 @@ install_runtime_services() {
         return 1
     fi
 
-    if ! systemd_available; then
-        warn "systemd was not detected. Databases and services could not be started automatically."
-        return 0
-    fi
-
-    systemctl enable --now mariadb >>"$LOG_FILE" 2>&1 || systemctl enable --now mysql >>"$LOG_FILE" 2>&1 || true
-    systemctl enable --now redis-server >>"$LOG_FILE" 2>&1 || true
-    systemctl enable --now nginx >>"$LOG_FILE" 2>&1 || true
-
-    if ! systemctl is-active --quiet mariadb && ! systemctl is-active --quiet mysql; then
-        status_fail "MariaDB is not running. Check: journalctl -u mariadb -n 50"
+    if ! ensure_mariadb_running; then
+        status_fail "MariaDB is not running. Check: service mariadb status or journalctl -u mariadb"
         return 1
     fi
     success "MariaDB is running."
 
-    if ! systemctl is-active --quiet redis-server; then
-        warn "Redis is not running. Queue processing may fail until it is fixed."
-    else
+    if ensure_redis_running; then
         success "Redis is running."
+    else
+        warn "Redis is not running. Queue processing may fail until it is fixed."
     fi
 
-    if ! systemctl is-active --quiet nginx; then
-        warn "Nginx is not running. Hosted applications will not get reverse proxy configs."
-    else
-        success "Nginx is running."
-    fi
+    ensure_nginx_running
+    success "Nginx is running."
 
     return 0
 }
@@ -879,6 +987,62 @@ setup_environment() {
     return 0
 }
 
+MYSQL_ROOT_AUTH=""
+
+detect_mysql_root_auth() {
+    MYSQL_ROOT_AUTH=""
+
+    if mysql -e "SELECT 1" >/dev/null 2>&1; then
+        MYSQL_ROOT_AUTH="mysql"
+        return 0
+    fi
+
+    if mysql -u root -e "SELECT 1" >/dev/null 2>&1; then
+        MYSQL_ROOT_AUTH="mysql -u root"
+        return 0
+    fi
+
+    if [ -f /etc/mysql/debian.cnf ] && mysql --defaults-file=/etc/mysql/debian.cnf -e "SELECT 1" >/dev/null 2>&1; then
+        MYSQL_ROOT_AUTH="mysql --defaults-file=/etc/mysql/debian.cnf"
+        return 0
+    fi
+
+    if [ -n "${MARIADB_ROOT_PASS:-}" ] && mysql -u root -p"$MARIADB_ROOT_PASS" -e "SELECT 1" >/dev/null 2>&1; then
+        MYSQL_ROOT_AUTH="mysql -u root -p\"${MARIADB_ROOT_PASS}\""
+        return 0
+    fi
+
+    if [ -t 0 ]; then
+        echo ""
+        info "MariaDB root authentication required."
+        echo -n "  Enter MariaDB root password (press ENTER if blank/socket): "
+        read -r -s input_pass
+        echo ""
+        if [ -n "$input_pass" ] && mysql -u root -p"$input_pass" -e "SELECT 1" >/dev/null 2>&1; then
+            MARIADB_ROOT_PASS="$input_pass"
+            MYSQL_ROOT_AUTH="mysql -u root -p\"${MARIADB_ROOT_PASS}\""
+            return 0
+        fi
+    fi
+
+    if command -v mariadb-admin >/dev/null 2>&1; then
+        mariadb-admin -u root password '' >>"$LOG_FILE" 2>&1 || true
+        if mysql -u root -e "SELECT 1" >/dev/null 2>&1; then
+            MYSQL_ROOT_AUTH="mysql -u root"
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+run_mysql_root() {
+    if [ -z "$MYSQL_ROOT_AUTH" ]; then
+        detect_mysql_root_auth || return 1
+    fi
+    eval "$MYSQL_ROOT_AUTH" "$@"
+}
+
 setup_database() {
     local db_pass_sql=""
 
@@ -887,15 +1051,21 @@ setup_database() {
         return 1
     fi
 
-    if ! mysql -e "SELECT 1" >/dev/null 2>&1; then
-        status_fail "Cannot connect to MariaDB as root (socket authentication)."
+    if ! ensure_mariadb_running; then
+        status_fail "MariaDB could not be started automatically."
+        echo -e "      ${DIM}Try manual start: service mariadb start${RESET}"
+        return 1
+    fi
+
+    if ! detect_mysql_root_auth; then
+        status_fail "Cannot connect to MariaDB as root."
         echo -e "      ${DIM}Try: mysql -u root -e 'SELECT 1'${RESET}"
         return 1
     fi
 
     db_pass_sql="$(printf '%s' "$DB_PASS" | sed "s/'/''/g")"
 
-    if ! mysql >>"$LOG_FILE" 2>&1 <<SQL
+    if ! run_mysql_root >>"$LOG_FILE" 2>&1 <<SQL
 CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${db_pass_sql}';
 CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${db_pass_sql}';
@@ -1086,7 +1256,7 @@ create_admin_user() {
     local password=""
     local input=""
 
-    count="$(mysql -N -B -e "SELECT COUNT(*) FROM \`${DB_NAME}\`.users;" 2>/dev/null || echo "")"
+    count="$(mysql -u "${DB_USER}" -p"${DB_PASS}" -h 127.0.0.1 -N -B -e "SELECT COUNT(*) FROM \`${DB_NAME}\`.users;" 2>/dev/null || run_mysql_root -N -B -e "SELECT COUNT(*) FROM \`${DB_NAME}\`.users;" 2>/dev/null || echo "")"
 
     if [ -z "$count" ]; then
         warn "Could not read the users table. Skipping admin creation."
@@ -1140,6 +1310,109 @@ create_admin_user() {
 # ==============================================================================
 # systemd services
 # ==============================================================================
+generate_native_service_script() {
+    local php_bin="${PHP_BIN:-$(command -v php 2>/dev/null || true)}"
+    local node_bin="$(command -v node 2>/dev/null || true)"
+    [ -n "$php_bin" ] || php_bin="/usr/bin/php"
+    [ -n "$node_bin" ] || node_bin="/usr/bin/node"
+
+    mkdir -p "$INSTALL_DIR" /var/run/n1x /var/log/n1x 2>/dev/null || true
+
+    cat > "$INSTALL_DIR/n1x-service.sh" <<EOF
+#!/usr/bin/env bash
+INSTALL_DIR="${INSTALL_DIR}"
+PHP_BIN="${php_bin}"
+NODE_BIN="${node_bin}"
+PID_DIR="/var/run/n1x"
+LOG_DIR="/var/log/n1x"
+
+mkdir -p "\$PID_DIR" "\$LOG_DIR"
+
+start_services() {
+    if command -v service >/dev/null 2>&1; then
+        service mariadb start >/dev/null 2>&1 || service mysql start >/dev/null 2>&1 || true
+        service redis-server start >/dev/null 2>&1 || true
+        service nginx start >/dev/null 2>&1 || true
+    fi
+
+    local pport
+    pport=\$(grep -m1 "^PANEL_PORT=" "\$INSTALL_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d ' "' || echo 8000)
+    pport=\${pport:-8000}
+
+    if pgrep -f "n1x-runner.*index.js" >/dev/null 2>&1; then
+        echo "Runner is already running."
+    else
+        echo "Starting Runner..."
+        cd "\$INSTALL_DIR/n1x-runner" && nohup "\$NODE_BIN" src/index.js >> "\$LOG_DIR/runner.log" 2>&1 &
+        echo \$! > "\$PID_DIR/runner.pid"
+    fi
+
+    if pgrep -f "artisan queue:work" >/dev/null 2>&1; then
+        echo "Queue worker is already running."
+    else
+        echo "Starting Queue Worker..."
+        cd "\$INSTALL_DIR" && nohup "\$PHP_BIN" artisan queue:work --sleep=3 --tries=3 --timeout=90 >> "\$LOG_DIR/queue.log" 2>&1 &
+        echo \$! > "\$PID_DIR/queue.pid"
+    fi
+
+    if pgrep -f "artisan serve.*\$pport" >/dev/null 2>&1; then
+        echo "Panel is already running on port \$pport."
+    else
+        echo "Starting Panel on port \$pport..."
+        cd "\$INSTALL_DIR" && nohup "\$PHP_BIN" artisan serve --host=0.0.0.0 --port=\$pport --no-reload >> "\$LOG_DIR/panel.log" 2>&1 &
+        echo \$! > "\$PID_DIR/panel.pid"
+    fi
+}
+
+stop_services() {
+    echo "Stopping N1X services..."
+    [ -f "\$PID_DIR/panel.pid" ] && kill -9 \$(cat "\$PID_DIR/panel.pid") 2>/dev/null || true
+    [ -f "\$PID_DIR/runner.pid" ] && kill -9 \$(cat "\$PID_DIR/runner.pid") 2>/dev/null || true
+    [ -f "\$PID_DIR/queue.pid" ] && kill -9 \$(cat "\$PID_DIR/queue.pid") 2>/dev/null || true
+    pkill -9 -f "artisan serve" 2>/dev/null || true
+    pkill -9 -f "n1x-runner.*index.js" 2>/dev/null || true
+    pkill -9 -f "artisan queue:work" 2>/dev/null || true
+    rm -f "\$PID_DIR"/*.pid
+    echo "Stopped."
+}
+
+status_services() {
+    local pport
+    pport=\$(grep -m1 "^PANEL_PORT=" "\$INSTALL_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d ' "' || echo 8000)
+    pport=\${pport:-8000}
+    if pgrep -f "artisan serve.*\$pport" >/dev/null 2>&1; then
+        echo "Panel:  ONLINE (Port \$pport)"
+    else
+        echo "Panel:  STOPPED"
+    fi
+    if pgrep -f "n1x-runner.*index.js" >/dev/null 2>&1; then
+        echo "Runner: ONLINE (Port 8080)"
+    else
+        echo "Runner: STOPPED"
+    fi
+    if pgrep -f "artisan queue:work" >/dev/null 2>&1; then
+        echo "Queue:  ONLINE"
+    else
+        echo "Queue:  STOPPED"
+    fi
+}
+
+case "\$1" in
+    start)   start_services ;;
+    stop)    stop_services ;;
+    restart) stop_services; sleep 1; start_services ;;
+    status)  status_services ;;
+    *) echo "Usage: \$0 {start|stop|restart|status}" ;;
+esac
+EOF
+    chmod +x "$INSTALL_DIR/n1x-service.sh"
+    ln -sf "$INSTALL_DIR/n1x-service.sh" /usr/local/bin/n1x-service 2>/dev/null || true
+
+    if command -v crontab >/dev/null 2>&1; then
+        (crontab -l 2>/dev/null | grep -v "n1x-service.sh"; echo "@reboot $INSTALL_DIR/n1x-service.sh start >/dev/null 2>&1") | crontab - 2>/dev/null || true
+    fi
+}
+
 install_systemd_services() {
     local php_bin="${PHP_BIN:-$(command -v php 2>/dev/null || true)}"
     local node_bin="$(command -v node 2>/dev/null || true)"
@@ -1147,11 +1420,31 @@ install_systemd_services() {
     [ -n "$php_bin" ] || php_bin="/usr/bin/php"
     [ -n "$node_bin" ] || node_bin="/usr/bin/node"
 
+    generate_native_service_script
+
     if ! systemd_available; then
-        warn "systemd is not available. Skipping service registration."
-        echo -e "      ${DIM}Start manually:${RESET}"
-        echo -e "      cd ${INSTALL_DIR} && ${php_bin} artisan serve --host=0.0.0.0 --port=${PANEL_PORT} --no-reload"
-        echo -e "      cd ${INSTALL_DIR}/n1x-runner && ${node_bin} src/index.js"
+        info "Starting N1X services in background via native process manager..."
+        "$INSTALL_DIR/n1x-service.sh" restart >>"$LOG_FILE" 2>&1 || true
+        sleep 2
+
+        local panel_state
+        local runner_state
+        panel_state="$(service_state n1x-panel.service)"
+        runner_state="$(service_state n1x-runner.service)"
+
+        if [ "$panel_state" = "active" ]; then
+            success "n1x-panel is running on port ${PANEL_PORT}."
+        else
+            warn "n1x-panel status: ${panel_state}. Check: /var/log/n1x/panel.log"
+        fi
+
+        if [ "$runner_state" = "active" ]; then
+            success "n1x-runner is running on port ${RUNNER_PORT}."
+        else
+            warn "n1x-runner status: ${runner_state}. Check: /var/log/n1x/runner.log"
+        fi
+
+        success "N1X services configured and running 24/7."
         return 0
     fi
 
@@ -1311,10 +1604,17 @@ show_summary() {
 
     echo ""
     echo -e "  ${BOLD}Useful commands${RESET}"
-    echo -e "  ${CYAN}systemctl status n1x-panel${RESET}"
-    echo -e "  ${CYAN}systemctl restart n1x-panel n1x-runner n1x-queue${RESET}"
-    echo -e "  ${CYAN}journalctl -u n1x-panel -f${RESET}"
-    echo -e "  ${CYAN}journalctl -u n1x-runner -f${RESET}"
+    if systemd_available; then
+        echo -e "  ${CYAN}systemctl status n1x-panel${RESET}"
+        echo -e "  ${CYAN}systemctl restart n1x-panel n1x-runner n1x-queue${RESET}"
+        echo -e "  ${CYAN}journalctl -u n1x-panel -f${RESET}"
+        echo -e "  ${CYAN}journalctl -u n1x-runner -f${RESET}"
+    else
+        echo -e "  ${CYAN}${INSTALL_DIR}/n1x-service.sh status${RESET}"
+        echo -e "  ${CYAN}${INSTALL_DIR}/n1x-service.sh restart${RESET}"
+        echo -e "  ${CYAN}tail -f /var/log/n1x/panel.log${RESET}"
+        echo -e "  ${CYAN}tail -f /var/log/n1x/runner.log${RESET}"
+    fi
     echo ""
     echo -e "  ${DIM}Use menu option 03 to change the panel port or manage services.${RESET}"
     echo -e "  ${BRIGHT_GREEN}${BOLD}============================================================${RESET}"
@@ -1444,8 +1744,14 @@ change_panel_port() {
         else
             status_fail "Services could not be restarted."
         fi
+    elif [ -x "$INSTALL_DIR/n1x-service.sh" ]; then
+        if run_silent "Restarting N1X services" "$INSTALL_DIR/n1x-service.sh" restart; then
+            success "Services restarted on port ${PANEL_PORT}."
+        else
+            status_fail "Services could not be restarted."
+        fi
     else
-        warn "systemd services are not installed yet; only .env was updated."
+        warn "Services are not configured yet; only .env was updated."
     fi
 
     open_firewall_port "$PANEL_PORT"
@@ -1460,20 +1766,28 @@ change_panel_port() {
 restart_services() {
     section "03 . RESTART SERVICES"
 
-    if ! systemd_available; then
-        status_fail "systemd is not available on this system."
-        pause_screen
-        return 1
-    fi
-
-    if run_silent "Restarting n1x-panel, n1x-runner and n1x-queue" \
-        systemctl restart n1x-runner.service n1x-queue.service n1x-panel.service; then
-        sleep 1
-        success "Panel : $(service_state n1x-panel.service)"
-        success "Runner: $(service_state n1x-runner.service)"
-        success "Queue : $(service_state n1x-queue.service)"
+    if systemd_available && [ -f /etc/systemd/system/n1x-panel.service ]; then
+        if run_silent "Restarting n1x-panel, n1x-runner and n1x-queue" \
+            systemctl restart n1x-runner.service n1x-queue.service n1x-panel.service; then
+            sleep 1
+            success "Panel : $(service_state n1x-panel.service)"
+            success "Runner: $(service_state n1x-runner.service)"
+            success "Queue : $(service_state n1x-queue.service)"
+        else
+            status_fail "Restart command failed. Check: journalctl -u n1x-panel -n 50"
+        fi
+    elif [ -x "$INSTALL_DIR/n1x-service.sh" ]; then
+        if run_silent "Restarting n1x-panel, n1x-runner and n1x-queue" \
+            "$INSTALL_DIR/n1x-service.sh" restart; then
+            sleep 1
+            success "Panel : $(service_state n1x-panel.service)"
+            success "Runner: $(service_state n1x-runner.service)"
+            success "Queue : $(service_state n1x-queue.service)"
+        else
+            status_fail "Restart command failed. Check: /var/log/n1x/"
+        fi
     else
-        status_fail "Restart command failed. Check: journalctl -u n1x-panel -n 50"
+        status_fail "No active service manager found."
     fi
 
     pause_screen
